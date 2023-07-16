@@ -5,7 +5,8 @@ use crate::{serenity_prelude as serenity, BoxFuture};
 /// Type returned from `#[poise::command]` annotated functions, which contains all of the generated
 /// prefix and application commands
 #[derive(derivative::Derivative)]
-#[derivative(Default, Debug(bound = ""))]
+#[derivative(Debug(bound = ""))]
+#[derivative(Default(bound = "U: Sync + 'static"))]
 pub struct Command<U, E> {
     // =============
     /// Callback to execute when this command is invoked in a prefix context
@@ -55,7 +56,7 @@ pub struct Command<U, E> {
     /// help: `~help command_name`
     pub help_text: Option<String>,
     /// Handles command cooldowns. Mainly for framework internal use
-    pub cooldowns: std::sync::Mutex<crate::Cooldowns>,
+    pub cooldowns: std::sync::Mutex<crate::Cooldowns<U, E>>,
     /// After the first response, whether to post subsequent responses as edits to the initial
     /// message
     ///

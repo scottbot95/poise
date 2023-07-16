@@ -52,6 +52,7 @@ pub struct CommandArgs {
     guild_cooldown: Option<u64>,
     channel_cooldown: Option<u64>,
     member_cooldown: Option<u64>,
+    cooldown_provider: Option<syn::Path>,
 }
 
 /// Representation of the function parameter attribute arguments
@@ -252,11 +253,24 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
     let hide_in_help = &inv.args.hide_in_help;
     let category = wrap_option_to_string(inv.args.category.as_ref());
 
-    let global_cooldown = wrap_option(inv.args.global_cooldown);
-    let user_cooldown = wrap_option(inv.args.user_cooldown);
-    let guild_cooldown = wrap_option(inv.args.guild_cooldown);
-    let channel_cooldown = wrap_option(inv.args.channel_cooldown);
-    let member_cooldown = wrap_option(inv.args.member_cooldown);
+    let cooldown_provider = match &inv.args.cooldown_provider {
+        Some(cooldown_provider) => quote::quote!(|ctx| Box::pin((#cooldown_provider)(ctx))),
+        None => {
+            let global_cooldown = wrap_option(inv.args.global_cooldown);
+            let user_cooldown = wrap_option(inv.args.user_cooldown);
+            let guild_cooldown = wrap_option(inv.args.guild_cooldown);
+            let channel_cooldown = wrap_option(inv.args.channel_cooldown);
+            let member_cooldown = wrap_option(inv.args.member_cooldown);
+            quote::quote!(|_ctx| Box::pin(async move { Ok(::poise::CooldownConfig {
+                global: #global_cooldown.map(std::time::Duration::from_secs),
+                user: #user_cooldown.map(std::time::Duration::from_secs),
+                guild: #guild_cooldown.map(std::time::Duration::from_secs),
+                channel: #channel_cooldown.map(std::time::Duration::from_secs),
+                member: #member_cooldown.map(std::time::Duration::from_secs),
+                __non_exhaustive: (),
+            })}))
+        }
+    };
 
     let default_member_permissions = &inv.default_member_permissions;
     let required_permissions = &inv.required_permissions;
@@ -325,14 +339,7 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
                 description_localizations: #description_localizations,
                 help_text: #help_text,
                 hide_in_help: #hide_in_help,
-                cooldowns: std::sync::Mutex::new(::poise::Cooldowns::new(::poise::CooldownConfig {
-                    global: #global_cooldown.map(std::time::Duration::from_secs),
-                    user: #user_cooldown.map(std::time::Duration::from_secs),
-                    guild: #guild_cooldown.map(std::time::Duration::from_secs),
-                    channel: #channel_cooldown.map(std::time::Duration::from_secs),
-                    member: #member_cooldown.map(std::time::Duration::from_secs),
-                    __non_exhaustive: (),
-                })),
+                cooldowns: std::sync::Mutex::new(::poise::Cooldowns::new(#cooldown_provider)),
                 reuse_response: #reuse_response,
                 default_member_permissions: #default_member_permissions,
                 required_permissions: #required_permissions,

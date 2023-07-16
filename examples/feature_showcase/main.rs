@@ -42,6 +42,7 @@ async fn main() {
                 checks::delete(),
                 checks::ferrisparty(),
                 checks::cooldowns(),
+                checks::cooldown_provider(),
                 checks::minmax(),
                 checks::get_guild_name(),
                 checks::only_in_dms(),

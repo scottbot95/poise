@@ -7,7 +7,7 @@ Poise supports several pre-command checks (sorted by order of execution):
 - command-specific check function
 - cooldowns
 */
-use crate::{Context, Error};
+use crate::{Context, Data, Error};
 use poise::serenity_prelude as serenity;
 
 #[poise::command(prefix_command, owners_only, hide_in_help)]
@@ -99,6 +99,18 @@ pub async fn ferrisparty(ctx: Context<'_>) -> Result<(), Error> {
     member_cooldown = 3,
 )]
 pub async fn cooldowns(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.say("You successfully called the command").await?;
+    Ok(())
+}
+
+async fn my_cd_provider(
+    _ctx: poise::CooldownContext<'_, Data>,
+) -> Result<poise::CooldownConfig, Error> {
+    Ok(Default::default())
+}
+
+#[poise::command(prefix_command, slash_command, cooldown_provider = "my_cd_provider")]
+pub async fn cooldown_provider(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("You successfully called the command").await?;
     Ok(())
 }

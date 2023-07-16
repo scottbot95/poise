@@ -1,6 +1,7 @@
 //! Prefix and slash agnostic utilities for dispatching incoming events onto framework commands
 
 use crate::serenity_prelude as serenity;
+use std::ops::Deref;
 
 /// Retrieves user permissions in the given channel. If unknown, returns None. If in DMs, returns
 /// `Permissions::all()`.
@@ -159,15 +160,19 @@ async fn check_permissions_and_cooldown_single<'a, U, E>(
 
     if !ctx.framework().options().manual_cooldowns {
         let cooldowns = &cmd.cooldowns;
-        let remaining_cooldown = cooldowns
-            .lock()
-            .unwrap()
-            .remaining_cooldown(ctx.cooldown_context());
-        if let Some(remaining_cooldown) = remaining_cooldown {
-            return Err(crate::FrameworkError::CooldownHit {
-                ctx,
-                remaining_cooldown,
-            });
+        let cooldowns_clone = crate::Cooldowns::clone(cooldowns.lock().unwrap().deref());
+        let remaining_cooldown = cooldowns_clone
+            .remaining_cooldown(ctx.cooldown_context())
+            .await;
+        match remaining_cooldown {
+            Ok(Some(remaining_cooldown)) => {
+                return Err(crate::FrameworkError::CooldownHit {
+                    ctx,
+                    remaining_cooldown,
+                })
+            }
+            Err(error) => return Err(crate::FrameworkError::Command { ctx, error }),
+            Ok(None) => {}
         }
     }
 

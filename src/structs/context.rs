@@ -156,11 +156,12 @@ context_methods! {
 
     /// Create a [`crate::CooldownContext`] based off the underlying context type.
     (cooldown_context self)
-    (pub fn cooldown_context(self) -> crate::CooldownContext) {
+    (pub fn cooldown_context(self) -> crate::CooldownContext<'a, U>) {
         crate::CooldownContext {
             user_id: self.author().id,
             channel_id: self.channel_id(),
-            guild_id: self.guild_id()
+            guild_id: self.guild_id(),
+            user_data: self.data(),
         }
     }
 
